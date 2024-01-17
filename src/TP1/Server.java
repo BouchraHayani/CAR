@@ -25,24 +25,42 @@ class Server {
                 InputStream in = clientSocket.getInputStream();
                 Scanner scanner = new Scanner(in);
 
-          
                 String userName = scanner.nextLine().trim();
-                if ("Bouchra".equals(userName)) {
+                if ("USER Bouchra".equals(userName)) {
                     out.write("331 User name ok\r\n".getBytes());
+
                     String password = scanner.nextLine().trim();
-                    System.out.println(password);
-                    out.write("230 User logged in\r\n".getBytes());
+
+                    if ("PASS Bpass".equals(password)) {
+                        out.write("230 User logged in\r\n".getBytes());
+                    } else {
+                        out.write("530 Not logged in\r\n".getBytes());
+                        break;
+                    }
                 } else {
-                	
                     out.write("530 Not logged in\r\n".getBytes());
+                    break;
                 }
+
+                
+                while (true) {
+                    String command = scanner.nextLine().trim();
+
+                    if (command.equalsIgnoreCase("quit")) {
+                        out.write("221 Goodbye\r\n".getBytes());
+                        break; 
+                    } else {
+                     
+                        out.write("500 Syntax error, command unrecognized\r\n".getBytes());
+                    }
+                }
+
                 scanner.close();
                 clientSocket.close();
             }
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
-         
             if (serverSocket != null && !serverSocket.isClosed()) {
                 try {
                     serverSocket.close();
