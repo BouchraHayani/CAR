@@ -14,7 +14,7 @@ class Server {
         ServerSocket serverSocket = null;
 
         try {
-            serverSocket = new ServerSocket(2028);
+            serverSocket = new ServerSocket(2121);
             System.out.println("Connected to localhost");
 
             while (true) {
