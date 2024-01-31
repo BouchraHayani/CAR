@@ -12,6 +12,8 @@ class Server {
     private static ServerSocket pasvSocket = null;
     private static Socket dataSocket = null;
     private static Map<String, String> userCredentials = new HashMap<>();
+    private static String currentDirectory = "/home/m1ipint/bouchra.hayani.etu/eclipse-workspace/TP1/src/";
+  
 
     public static void main(String[] args) {
 
@@ -75,14 +77,6 @@ class Server {
                             case "RETR":
                                 handleRetrCommand(commandParts, clientSocket, out);
                                 break;
-                            case "SYST":
-                                out.write("215 UNIX Type: L8\r\n".getBytes());
-                                System.out.println("Sent: 215 UNIX Type: L8");
-                                break;
-                            case "FEAT":
-                                out.write("211 End\r\n".getBytes());
-                                System.out.println("Sent: 211 End");
-                                break;
                             case "SIZE":
                                 handleSizeCommand(commandParts, out);
                                 break;
@@ -95,15 +89,18 @@ class Server {
                             case "PORT":
                                 handlePortCommand(commandParts, out);
                                 break;
-                            case "TYPE":
-                                if (commandParts.length > 1 && "I".equalsIgnoreCase(commandParts[1])) {
-                                    out.write("200 Type set to I\r\n".getBytes());
-                                    System.out.println("Sent: 200 Type set to I");
+                            case "LIST":
+                            	handleListCommand(commandParts, clientSocket, out);
+                                break;
+                            case "CWD":
+                                if (commandParts.length > 1) {
+                                    handleCwdCommand(commandParts, out);
                                 } else {
                                     out.write("501 Syntax error in parameters or arguments\r\n".getBytes());
-                                    System.out.println("Sent: 501 Syntax error in parameters or arguments");
                                 }
                                 break;
+
+                        
                             default:
                                 out.write("500 Syntax error, command unrecognized\r\n".getBytes());
                                 System.out.println("Sent: 500 Syntax error, command unrecognized");
@@ -142,7 +139,7 @@ class Server {
     private static void handleRetrCommand(String[] commandParts, Socket clientSocket, OutputStream out) throws IOException {
         if (commandParts.length > 1 && dataSocket != null && dataSocket.isConnected()) {
             String fileName = commandParts[1];
-            File file = new File("/home/m1ipint/bouchra.hayani.etu/eclipse-workspace/TP1/src/" + fileName);
+            File file = new File(currentDirectory + fileName);
 
             if (!file.exists()) {
                 out.write("550 File not found\r\n".getBytes());
@@ -173,7 +170,7 @@ class Server {
     private static void handleSizeCommand(String[] commandParts, OutputStream out) throws IOException {
         if (commandParts.length > 1) {
             String fileName = commandParts[1];
-            File file = new File("/home/m1ipint/bouchra.hayani.etu/eclipse-workspace/TP1/src/" + fileName); 
+            File file = new File(currentDirectory + fileName); 
 
             if (file.exists()) {
                 out.write(("213 " + file.length() + "\r\n").getBytes());
@@ -234,4 +231,41 @@ class Server {
             System.out.println("Sent: 501 Syntax error in parameters or arguments");
         }
     }
+    private static void handleListCommand(String[] commandParts, Socket clientSocket, OutputStream out) throws IOException {
+        File dir = new File(currentDirectory);
+        File[] files = dir.listFiles();
+
+        if (files != null) {
+            out.write("150 accepted data connection\r\n".getBytes());
+            try (OutputStream dataOut = dataSocket.getOutputStream()) {
+                for (File file : files) {
+                    String fileInfo = String.format("%s %s\r\n",
+                            file.isDirectory() ? "d" : "-",
+                            file.getName());
+                    dataOut.write(fileInfo.getBytes());
+                }
+            }
+            out.write("226 list transferred\r\n".getBytes());
+        } else {
+            out.write("550 Failed to list directory\r\n".getBytes());
+        }
+    }
+    
+    private static void handleCwdCommand(String[] commandParts, OutputStream out) throws IOException {
+        if (commandParts.length > 1) {
+            String targetDirectory = commandParts[1];
+            File newDir = new File(currentDirectory, targetDirectory);
+
+            if (newDir.isDirectory() && newDir.exists()) {
+                currentDirectory = newDir.getCanonicalPath();
+                out.write(("250 CWD command successful. Working directory is " + currentDirectory + "\r\n").getBytes());
+            } else {
+                out.write("550 Failed to change directory\r\n".getBytes());
+            }
+        } else {
+            out.write("501 Syntax error in parameters or arguments\r\n".getBytes());
+        }
+    }
+
+
 }
