@@ -1,3 +1,4 @@
+User
 package TP1;
 
 import java.io.*;
@@ -17,12 +18,12 @@ class Server {
 
     public static void main(String[] args) {
 
-        userCredentials.put("USER Bouchra", "PASS Bpass");
+        userCredentials.put("USER Bouchra", "PASS B");
      
 
         ServerSocket serverSocket = null;
         try {
-            serverSocket = new ServerSocket(2028);
+            serverSocket = new ServerSocket(2030);
             System.out.println("Server started on localhost");
 
             while (true) {
@@ -64,30 +65,20 @@ class Server {
                         String[] commandParts = commandLine.split(" ");
                         String command = commandParts[0];
 
-
                         switch (command.toUpperCase()) {
                         
                             case "QUIT":
                                 out.write("221 Goodbye\r\n".getBytes());
                                 System.out.println("Sent: 221 Goodbye");
                                 break;
-                            case "EPRT":
-                                handleEprtCommand(commandParts, out);
+                            case "EPSV":
+                                handleEpsvCommand(clientSocket, out);
                                 break;
                             case "RETR":
                                 handleRetrCommand(commandParts, clientSocket, out);
                                 break;
                             case "SIZE":
                                 handleSizeCommand(commandParts, out);
-                                break;
-                            case "EPSV":
-                                handlePasvCommand(clientSocket, out);
-                                break;
-                            case "PASV":
-                                handlePasvCommand(clientSocket, out);
-                                break;
-                            case "PORT":
-                                handlePortCommand(commandParts, out);
                                 break;
                             case "LIST":
                             	handleListCommand(commandParts, clientSocket, out);
@@ -123,18 +114,26 @@ class Server {
             }
         }
     }
+    
+    private static void handleEpsvCommand(Socket clientSocket, OutputStream out) throws IOException {
+        if (pasvSocket != null && !pasvSocket.isClosed()) {
+            pasvSocket.close();
+        }
 
-    private static void handleEprtCommand(String[] commandParts, OutputStream out) throws IOException {
-        if (commandParts.length > 1) {
-            String portPart = commandParts[1].replaceAll("\\|", ""); 
-            dataPort = Integer.parseInt(portPart.split(",")[3]); 
-            out.write("200 Port command successful\r\n".getBytes());
-            System.out.println("Sent: 200 Port command successful");
-        } else {
-            out.write("501 Syntax error in parameters or arguments\r\n".getBytes());
-            System.out.println("Sent: 501 Syntax error in parameters or arguments");
+        pasvSocket = new ServerSocket(0);
+        int port = pasvSocket.getLocalPort();
+        String response = "229 Entering Extended Passive Mode (|||" + port + "|)\r\n";
+        out.write(response.getBytes());
+        System.out.println("EPSV Response: " + response);
+
+        try {
+            dataSocket = pasvSocket.accept();
+            System.out.println("Data connection established on port " + port);
+        } catch (IOException e) {
+            System.out.println("Failed to establish data connection: " + e.getMessage());
         }
     }
+    
 
     private static void handleRetrCommand(String[] commandParts, Socket clientSocket, OutputStream out) throws IOException {
         if (commandParts.length > 1 && dataSocket != null && dataSocket.isConnected()) {
@@ -166,7 +165,6 @@ class Server {
         }
     }
 
-
     private static void handleSizeCommand(String[] commandParts, OutputStream out) throws IOException {
         if (commandParts.length > 1) {
             String fileName = commandParts[1];
@@ -185,52 +183,6 @@ class Server {
         }
     }
 
-    private static void handlePasvCommand(Socket clientSocket, OutputStream out) throws IOException {
-        if (pasvSocket != null && !pasvSocket.isClosed()) {
-            pasvSocket.close();
-        }
-
-        pasvSocket = new ServerSocket(0);
-        int port = pasvSocket.getLocalPort();
-        String response = "229 Entering Extended Passive Mode (|||" + port + "|)\r\n";
-        out.write(response.getBytes());
-        System.out.println("EPSV Response: " + response);
-
-        try {
-            dataSocket = pasvSocket.accept();
-            System.out.println("Data connection established on port " + port);
-        } catch (IOException e) {
-            System.out.println("Failed to establish data connection: " + e.getMessage());
-        }
-    }
-
-
-    private static void handlePortCommand(String[] commandParts, OutputStream out) throws IOException {
-        if (commandParts.length > 1) {
-            String[] parts = commandParts[1].split(",");
-            if (parts.length == 6) {
-                String clientIP = String.join(".", parts[0], parts[1], parts[2], parts[3]);
-                int clientPort = Integer.parseInt(parts[4]) * 256 + Integer.parseInt(parts[5]);
-
-               
-                if (dataSocket != null && !dataSocket.isClosed()) {
-                    dataSocket.close();
-                }
-
-                dataSocket = new Socket(clientIP, clientPort);
-
-                String response = "200 PORT command successful\r\n";
-                out.write(response.getBytes());
-                System.out.println("Sent: " + response);
-            } else {
-                out.write("501 Syntax error in parameters or arguments\r\n".getBytes());
-                System.out.println("Sent: 501 Syntax error in parameters or arguments");
-            }
-        } else {
-            out.write("501 Syntax error in parameters or arguments\r\n".getBytes());
-            System.out.println("Sent: 501 Syntax error in parameters or arguments");
-        }
-    }
     private static void handleListCommand(String[] commandParts, Socket clientSocket, OutputStream out) throws IOException {
         File dir = new File(currentDirectory);
         File[] files = dir.listFiles();
@@ -269,3 +221,4 @@ class Server {
 
 
 }
+
